@@ -59,7 +59,6 @@ export function GroupComposer() {
     if (!over) return;
 
     const participantId = active.id as string;
-    const overId = over.id as string;
     const overData = over.data.current;
 
     if (overData?.isPool) {
@@ -197,7 +196,7 @@ export function GroupComposer() {
         </button>
       </div>
 
-      <DragOverlay>
+      <DragOverlay dropAnimation={null}>
         {activeParticipant && <StaticParticipantCard participant={activeParticipant} />}
       </DragOverlay>
     </DndContext>
