@@ -60,11 +60,13 @@ export function WheelDraw({ participants, winnerId, isSpinning, onDone, size = 3
   const activeSegmentRef = useRef(-1);
   const isDoneRef = useRef(false);
   const [activeSegment, setActiveSegment] = useState(0);
+  const [lockedWinnerName, setLockedWinnerName] = useState<string | null>(null);
   const { playTick, playDing } = useSounds();
   const { tick, winnerReveal } = useHaptics();
 
   const segmentAngle = FULL_CIRCLE / participants.length;
   const activeParticipant = participants[activeSegment] ?? participants[0];
+  const displayedName = lockedWinnerName ?? activeParticipant?.name ?? "";
 
   const winnerIndex = useMemo(() => {
     if (!winnerId) return 0;
@@ -248,6 +250,7 @@ export function WheelDraw({ participants, winnerId, isSpinning, onDone, size = 3
   useEffect(() => {
     if (!isSpinning) return;
     isDoneRef.current = false;
+    setLockedWinnerName(null);
 
     // Calculate target: land on winner segment + extra full spins
     // The pointer is at top (angle = -PI/2 from canvas perspective)
@@ -290,6 +293,7 @@ export function WheelDraw({ participants, winnerId, isSpinning, onDone, size = 3
       } else {
         isDoneRef.current = true;
         updateActiveSegment(winnerIndex);
+        setLockedWinnerName(participants[winnerIndex]?.name ?? null);
         drawWheel(rotationRef.current, winnerIndex, true);
         playDing();
         winnerReveal();
@@ -299,7 +303,7 @@ export function WheelDraw({ participants, winnerId, isSpinning, onDone, size = 3
 
     rafRef.current = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(rafRef.current);
-  }, [drawWheel, isSpinning, onDone, participants.length, playDing, playTick, segmentAngle, tick, updateActiveSegment, winnerId, winnerIndex, winnerReveal]);
+  }, [drawWheel, isSpinning, onDone, participants, participants.length, playDing, playTick, segmentAngle, tick, updateActiveSegment, winnerId, winnerIndex, winnerReveal]);
 
   return (
     <div className="flex flex-col items-center gap-3">
@@ -325,7 +329,7 @@ export function WheelDraw({ participants, winnerId, isSpinning, onDone, size = 3
       </div>
       <div className="min-h-10 w-full max-w-[min(100%,20rem)] overflow-hidden rounded-xl border border-amber-300/30 bg-slate-950/80 px-4 py-2 text-center shadow-lg shadow-amber-500/10">
         <div className="text-[10px] font-semibold uppercase tracking-wide text-amber-300/70">Sous la flèche</div>
-        <div className="truncate text-sm font-bold text-white sm:text-base">{activeParticipant?.name ?? ""}</div>
+        <div className="truncate text-sm font-bold text-white sm:text-base">{displayedName}</div>
       </div>
     </div>
   );

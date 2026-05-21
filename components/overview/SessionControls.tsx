@@ -98,6 +98,27 @@ export function SessionControls() {
     );
   }
 
+  if (currentCycle?.status === "running") {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex flex-col items-center gap-3"
+      >
+        <p className="text-slate-400 text-sm">
+          {currentCycle.name} en cours
+        </p>
+        <button
+          onClick={() => setView("drawing")}
+          className="flex items-center gap-3 px-8 py-4 rounded-2xl bg-gradient-to-r from-fuchsia-600 to-violet-600 hover:from-fuchsia-500 hover:to-violet-500 text-white font-bold text-lg transition-all shadow-xl shadow-fuchsia-500/30"
+        >
+          <Play size={22} fill="currentColor" />
+          Continuer le tirage
+        </button>
+      </motion.div>
+    );
+  }
+
   // Launch current cycle
   if (currentCycle?.status === "pending") {
     const isLast = isLastCycle;

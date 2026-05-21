@@ -64,6 +64,7 @@ function DrawingSession({ session }: { session: Session }) {
   const cycle = session.cycles[session.currentCycleIndex] ?? session.cycles[0];
 
   const isLastCycle = session.currentCycleIndex === session.cycles.length - 1;
+  const isReplayingFromOverview = cycle.status === "running";
   const initialGroupIndex = Math.max(0, cycle.groups.findIndex((group) => group.status !== "done"));
   const [activeGroupIndex, setActiveGroupIndex] = useState(initialGroupIndex);
   const [groupStates, setGroupStates] = useState<GroupDrawState[]>(() =>
@@ -86,20 +87,19 @@ function DrawingSession({ session }: { session: Session }) {
       updated[safeActiveGroupIndex] = { ...updated[safeActiveGroupIndex], phase: "spinning" };
       return updated;
     });
-    // Mark as drawing in store
-    useStore.getState().markGroupAsDrawn(cycle.id, activeGroup.id, []);
   }, [activeGroup, safeActiveGroupIndex, cycle.id]);
 
   const handleSpinDone = useCallback(() => {
+    const state = groupStates[safeActiveGroupIndex];
+    const newWinner = state?.precomputedWinners[state.currentWinnerIndex];
+    if (!state || !newWinner) return;
+
+    const newWinners = [...state.winners, newWinner];
+    const moreWinners = state.currentWinnerIndex + 1 < state.precomputedWinners.length;
+    const shouldReturnToResults = !moreWinners && (replayGroupIndex !== null || isReplayingFromOverview);
+
     setGroupStates((prev) => {
       const updated = [...prev];
-      const state = updated[safeActiveGroupIndex];
-      if (!state) return prev;
-      const newWinner = state.precomputedWinners[state.currentWinnerIndex];
-      if (!newWinner) return prev;
-      const newWinners = [...state.winners, newWinner];
-      const moreWinners = state.currentWinnerIndex + 1 < state.precomputedWinners.length;
-
       updated[safeActiveGroupIndex] = {
         ...state,
         phase: moreWinners ? "spinning" : "revealing",
@@ -109,9 +109,30 @@ function DrawingSession({ session }: { session: Session }) {
       };
       return updated;
     });
-  }, [safeActiveGroupIndex]);
 
-  const handleRevealDone = useCallback(() => {
+    if (shouldReturnToResults && activeGroup) {
+      const winnersToPersist = newWinners;
+      window.setTimeout(() => {
+        markGroupAsDrawn(cycle.id, activeGroup.id, winnersToPersist);
+        setGroupStates((prev) => {
+          const updated = [...prev];
+          if (updated[safeActiveGroupIndex]) {
+            updated[safeActiveGroupIndex] = {
+              ...updated[safeActiveGroupIndex],
+              phase: "done",
+              winners: winnersToPersist,
+            };
+          }
+          return updated;
+        });
+        completeCycle(cycle.id);
+        setReplayGroupIndex(null);
+        setAllGroupsDone(true);
+      }, 750);
+    }
+  }, [activeGroup, safeActiveGroupIndex, groupStates, replayGroupIndex, isReplayingFromOverview, markGroupAsDrawn, cycle.id, completeCycle]);
+
+  const finishActiveGroup = useCallback(() => {
     if (!activeGroup) return;
     const state = groupStates[safeActiveGroupIndex];
     if (!state) return;
@@ -128,7 +149,7 @@ function DrawingSession({ session }: { session: Session }) {
       index === safeActiveGroupIndex ? { ...groupState, phase: "done" as const } : groupState
     );
 
-    if (replayGroupIndex !== null) {
+    if (replayGroupIndex !== null || isReplayingFromOverview) {
       completeCycle(cycle.id);
       setReplayGroupIndex(null);
       setAllGroupsDone(true);
@@ -156,7 +177,11 @@ function DrawingSession({ session }: { session: Session }) {
         playFanfare();
       }
     }
-  }, [activeGroup, safeActiveGroupIndex, groupStates, replayGroupIndex, cycle, markGroupAsDrawn, completeCycle, isLastCycle, playFanfare]);
+  }, [activeGroup, safeActiveGroupIndex, groupStates, replayGroupIndex, isReplayingFromOverview, cycle.id, markGroupAsDrawn, completeCycle, isLastCycle, playFanfare]);
+
+  const handleRevealDone = useCallback(() => {
+    finishActiveGroup();
+  }, [finishActiveGroup]);
 
   const handleReplayGroup = useCallback((groupIndex: number) => {
     const group = cycle.groups[groupIndex];
@@ -185,18 +210,18 @@ function DrawingSession({ session }: { session: Session }) {
   }, [resetSession, setSetupStep, setView]);
 
   useEffect(() => {
-    if (cycle.groups.length <= 1 || !activeState) return;
+    if (!activeState) return;
 
-    if (activeState.phase === "waiting") {
+    if (cycle.groups.length > 1 && activeState.phase === "waiting") {
       const timeout = window.setTimeout(handleStartGroup, 250);
       return () => window.clearTimeout(timeout);
     }
 
-    if (activeState.phase === "revealing") {
+    if ((cycle.groups.length > 1 || replayGroupIndex !== null || isReplayingFromOverview) && activeState.phase === "revealing") {
       const timeout = window.setTimeout(handleRevealDone, 700);
       return () => window.clearTimeout(timeout);
     }
-  }, [activeState, cycle.groups.length, handleRevealDone, handleStartGroup]);
+  }, [activeState, cycle.groups.length, handleRevealDone, handleStartGroup, isReplayingFromOverview, replayGroupIndex]);
 
   useEffect(() => {
     const updateWheelSize = () => {
@@ -375,6 +400,22 @@ function DrawingSession({ session }: { session: Session }) {
                           </div>
                         ))}
                       </div>
+                    )}
+                    {isActive && state.phase === "waiting" && (
+                      <button
+                        onClick={handleStartGroup}
+                        className="mt-3 w-full rounded-lg bg-fuchsia-600 px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-fuchsia-500"
+                      >
+                        Lancer ce groupe
+                      </button>
+                    )}
+                    {isActive && state.phase === "revealing" && (
+                      <button
+                        onClick={handleRevealDone}
+                        className="mt-3 w-full rounded-lg bg-amber-400 px-3 py-2 text-xs font-bold text-slate-950 transition-colors hover:bg-amber-300"
+                      >
+                        Continuer
+                      </button>
                     )}
                   </motion.div>
                 );

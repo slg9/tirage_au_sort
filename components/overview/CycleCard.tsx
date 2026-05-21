@@ -1,6 +1,6 @@
 "use client";
 import { motion } from "framer-motion";
-import { CheckCircle, Clock, RotateCcw, Zap } from "lucide-react";
+import { CheckCircle, Clock, Play, RotateCcw, Zap } from "lucide-react";
 import { Cycle } from "@/lib/types";
 import { GroupCard } from "./GroupCard";
 import { useStore } from "@/lib/store";
@@ -76,6 +76,18 @@ export function CycleCard({ cycle, isCurrent }: Props) {
               </button>
             ))}
           </div>
+        </div>
+      )}
+
+      {isRunning && isCurrent && (
+        <div className="mt-3 border-t border-white/10 pt-3">
+          <button
+            onClick={() => setView("drawing")}
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-fuchsia-600 px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-fuchsia-500"
+          >
+            <Play size={14} fill="currentColor" />
+            Continuer le tirage
+          </button>
         </div>
       )}
     </div>
