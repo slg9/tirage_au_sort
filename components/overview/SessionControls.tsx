@@ -6,6 +6,7 @@ import { useStore } from "@/lib/store";
 export function SessionControls() {
   const session = useStore((s) => s.session);
   const setView = useStore((s) => s.setView);
+  const setSetupStep = useStore((s) => s.setSetupStep);
   const prepareNextCycle = useStore((s) => s.prepareNextCycle);
   const resetSession = useStore((s) => s.resetSession);
   const newSession = useStore((s) => s.newSession);
@@ -19,6 +20,17 @@ export function SessionControls() {
     ? false
     : session.cycles[session.currentCycleIndex - 1]?.status === "done";
   const currentCycleDone = currentCycle?.status === "done";
+
+  const replayFullDraw = () => {
+    resetSession();
+    setView("drawing");
+  };
+
+  const editGroupsBeforeRestart = () => {
+    resetSession();
+    setSetupStep("groups");
+    setView("setup");
+  };
 
   if (isSessionDone) {
     return (
@@ -34,13 +46,19 @@ export function SessionControls() {
             {session.cycles[session.cycles.length - 1].groups.flatMap((g) => g.winners).length} grand(s) gagnant(s)
           </p>
         </motion.div>
-        <div className="flex gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row">
           <button
             onClick={resetSession}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-white/20 text-slate-300 hover:bg-white/5 transition-all text-sm"
           >
             <RotateCcw size={16} />
             Recommencer
+          </button>
+          <button
+            onClick={editGroupsBeforeRestart}
+            className="px-4 py-2.5 rounded-xl border border-white/20 text-slate-300 hover:bg-white/5 transition-all text-sm"
+          >
+            Modifier les groupes
           </button>
           <button
             onClick={newSession}
@@ -89,17 +107,36 @@ export function SessionControls() {
         animate={{ opacity: 1, y: 0 }}
         className="flex flex-col items-center gap-3"
       >
-        <button
-          onClick={() => setView("drawing")}
-          className={`flex items-center gap-3 px-8 py-4 rounded-2xl font-bold text-lg transition-all shadow-xl
+        <div className="flex flex-col items-center gap-3">
+          {isLast && session.currentCycleIndex > 0 && (
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <button
+                onClick={replayFullDraw}
+                className="flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-white/10"
+              >
+                <RotateCcw size={16} />
+                Rejouer tout le tirage
+              </button>
+              <button
+                onClick={editGroupsBeforeRestart}
+                className="rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/10"
+              >
+                Modifier les groupes
+              </button>
+            </div>
+          )}
+          <button
+            onClick={() => setView("drawing")}
+            className={`flex items-center gap-3 px-8 py-4 rounded-2xl font-bold text-lg transition-all shadow-xl
             ${isLast
               ? "bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-900 shadow-amber-500/30"
               : "bg-gradient-to-r from-fuchsia-600 to-violet-600 hover:from-fuchsia-500 hover:to-violet-500 text-white shadow-fuchsia-500/30"
             }`}
-        >
-          {isLast ? <Trophy size={22} /> : <Play size={22} fill="currentColor" />}
-          {isLast ? "Lancer le tirage final" : `Lancer le ${currentCycle.name}`}
-        </button>
+          >
+            {isLast ? <Trophy size={22} /> : <Play size={22} fill="currentColor" />}
+            {isLast ? "Lancer le tirage final" : `Lancer le ${currentCycle.name}`}
+          </button>
+        </div>
       </motion.div>
     );
   }

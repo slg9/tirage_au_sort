@@ -7,6 +7,20 @@ const blobs = [
   { color: "#d97706", x: "30%", y: "70%", size: 400, duration: 20 },
 ];
 
+const particles = Array.from({ length: 35 }, (_, i) => ({
+  id: i,
+  left: `${(seededValue(i, 17) * 100).toFixed(4)}%`,
+  top: `${(seededValue(i, 41) * 100).toFixed(4)}%`,
+  delay: seededValue(i, 73) * 10,
+  duration: 8 + seededValue(i, 109) * 12,
+  size: `${(2 + seededValue(i, 137) * 3).toFixed(3)}px`,
+}));
+
+function seededValue(index: number, salt: number) {
+  const x = Math.sin(index * 999 + salt) * 10000;
+  return x - Math.floor(x);
+}
+
 export function AuroraBackground() {
   return (
     <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
@@ -40,15 +54,6 @@ export function AuroraBackground() {
 }
 
 function Particles() {
-  const particles = Array.from({ length: 35 }, (_, i) => ({
-    id: i,
-    left: Math.random() * 100,
-    top: Math.random() * 100,
-    delay: Math.random() * 10,
-    duration: 8 + Math.random() * 12,
-    size: 2 + Math.random() * 3,
-  }));
-
   return (
     <>
       {particles.map((p) => (
@@ -56,8 +61,8 @@ function Particles() {
           key={p.id}
           className="absolute rounded-full bg-amber-400/40"
           style={{
-            left: `${p.left}%`,
-            top: `${p.top}%`,
+            left: p.left,
+            top: p.top,
             width: p.size,
             height: p.size,
           }}

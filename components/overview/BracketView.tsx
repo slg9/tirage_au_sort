@@ -8,7 +8,8 @@ import { useStore } from "@/lib/store";
 export function BracketView() {
   const session = useStore((s) => s.session);
   const setView = useStore((s) => s.setView);
-  const newSession = useStore((s) => s.newSession);
+  const setSetupStep = useStore((s) => s.setSetupStep);
+  const resetSession = useStore((s) => s.resetSession);
 
   if (!session) return null;
 
@@ -27,10 +28,14 @@ export function BracketView() {
           </p>
         </div>
         <button
-          onClick={() => setView("setup")}
+          onClick={() => {
+            resetSession();
+            setSetupStep("groups");
+            setView("setup");
+          }}
           className="px-4 py-2 rounded-xl border border-white/20 text-slate-400 hover:text-white hover:bg-white/5 text-sm transition-all"
         >
-          Modifier la config
+          Modifier les groupes
         </button>
       </div>
 

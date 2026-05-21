@@ -143,8 +143,11 @@ export default async function RootLayout({
   if (!isLocale(rawLocale)) notFound();
 
   return (
-    <html lang={rawLocale} className="dark">
-      <body className={`${inter.variable} font-sans bg-slate-950 text-white min-h-screen antialiased`}>
+    <html lang={rawLocale} className="dark" suppressHydrationWarning>
+      <body
+        suppressHydrationWarning
+        className={`${inter.variable} font-sans bg-slate-950 text-white min-h-screen antialiased`}
+      >
         <WebApplicationJsonLd locale={rawLocale} />
         <AuroraBackground />
         {children}

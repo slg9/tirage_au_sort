@@ -120,6 +120,8 @@ type Store = {
   markGroupAsDrawn: (cycleId: string, groupId: string, winners: Participant[]) => void;
   completeCycle: (cycleId: string) => void;
   prepareNextCycle: () => void;
+  resetGroupDraw: (cycleId: string, groupId: string) => void;
+  resetCycleDraw: (cycleId: string) => void;
 
   // Color assignment
   assignWinnerColor: (participantId: string, color: string) => void;
@@ -525,6 +527,58 @@ export const useStore = create<Store>()(
             c.id === cycleId ? { ...c, status: "done" as const } : c
           );
           return persistSession(s, { ...s.session, cycles });
+        }),
+
+      resetGroupDraw: (cycleId, groupId) =>
+        set((s) => {
+          if (!s.session) return {};
+          const targetCycle = s.session.cycles.find((c) => c.id === cycleId);
+          if (!targetCycle) return {};
+          const cycles = s.session.cycles.map((c) => {
+            if (c.id === cycleId) {
+              return {
+                ...c,
+                status: "running" as const,
+                groups: c.groups.map((g) =>
+                  g.id === groupId ? { ...g, winners: [], status: "pending" as const } : g
+                ),
+              };
+            }
+            if (c.index > targetCycle.index) {
+              return {
+                ...c,
+                status: "pending" as const,
+                groups: c.groups.map((g) => ({ ...g, participants: [], winners: [], status: "pending" as const })),
+              };
+            }
+            return c;
+          });
+          return persistSession(s, { ...s.session, cycles, currentCycleIndex: targetCycle.index });
+        }),
+
+      resetCycleDraw: (cycleId) =>
+        set((s) => {
+          if (!s.session) return {};
+          const targetCycle = s.session.cycles.find((c) => c.id === cycleId);
+          if (!targetCycle) return {};
+          const cycles = s.session.cycles.map((c) => {
+            if (c.id === cycleId) {
+              return {
+                ...c,
+                status: "pending" as const,
+                groups: c.groups.map((g) => ({ ...g, winners: [], status: "pending" as const })),
+              };
+            }
+            if (c.index > targetCycle.index) {
+              return {
+                ...c,
+                status: "pending" as const,
+                groups: c.groups.map((g) => ({ ...g, participants: [], winners: [], status: "pending" as const })),
+              };
+            }
+            return c;
+          });
+          return persistSession(s, { ...s.session, cycles, currentCycleIndex: targetCycle.index });
         }),
 
       prepareNextCycle: () =>
