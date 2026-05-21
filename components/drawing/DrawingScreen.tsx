@@ -1,8 +1,8 @@
 "use client";
-import { useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Play } from "lucide-react";
-import { DrawGroup, Participant } from "@/lib/types";
+import { DrawGroup, Participant, Session } from "@/lib/types";
 import { WheelDraw } from "./WheelDraw";
 import { ShuffleDraw } from "./ShuffleDraw";
 import { WinnersReveal } from "./WinnersReveal";
@@ -11,7 +11,7 @@ import { drawWinners } from "@/lib/draw";
 import { useStore } from "@/lib/store";
 import { useSounds } from "@/hooks/useSounds";
 
-const SHUFFLE_THRESHOLD = 20;
+const SHUFFLE_THRESHOLD = Number.POSITIVE_INFINITY;
 
 type GroupDrawState = {
   phase: "waiting" | "spinning" | "revealing" | "done";
@@ -23,18 +23,22 @@ type GroupDrawState = {
 
 export function DrawingScreen() {
   const session = useStore((s) => s.session);
+
+  if (!session) return null;
+
+  return <DrawingSession session={session} />;
+}
+
+function DrawingSession({ session }: { session: Session }) {
   const markGroupAsDrawn = useStore((s) => s.markGroupAsDrawn);
   const completeCycle = useStore((s) => s.completeCycle);
   const setView = useStore((s) => s.setView);
   const prepareNextCycle = useStore((s) => s.prepareNextCycle);
   const resetSession = useStore((s) => s.resetSession);
   const newSession = useStore((s) => s.newSession);
-  const { playWoosh, playFanfare } = useSounds();
+  const { playFanfare } = useSounds();
 
-  if (!session) return null;
-
-  const cycle = session.cycles[session.currentCycleIndex];
-  if (!cycle) return null;
+  const cycle = session.cycles[session.currentCycleIndex] ?? session.cycles[0];
 
   const isLastCycle = session.currentCycleIndex === session.cycles.length - 1;
   const [activeGroupIndex, setActiveGroupIndex] = useState(0);
@@ -53,8 +57,6 @@ export function DrawingScreen() {
   const activeGroup = cycle.groups[activeGroupIndex];
   const activeState = groupStates[activeGroupIndex];
   const useShuffleMode = activeGroup.participants.length > SHUFFLE_THRESHOLD;
-
-  const currentWinnerId = activeState?.precomputedWinners[activeState.currentWinnerIndex]?.id ?? null;
 
   const handleStartGroup = useCallback(() => {
     setGroupStates((prev) => {
@@ -118,6 +120,20 @@ export function DrawingScreen() {
     }
   }, [activeGroupIndex, groupStates, cycle, activeGroup, markGroupAsDrawn, completeCycle, isLastCycle, playFanfare]);
 
+  useEffect(() => {
+    if (cycle.groups.length <= 1 || !activeState) return;
+
+    if (activeState.phase === "waiting") {
+      const timeout = window.setTimeout(handleStartGroup, 250);
+      return () => window.clearTimeout(timeout);
+    }
+
+    if (activeState.phase === "revealing") {
+      const timeout = window.setTimeout(handleRevealDone, 700);
+      return () => window.clearTimeout(timeout);
+    }
+  }, [activeState, cycle.groups.length, handleRevealDone, handleStartGroup]);
+
   const allWinners = groupStates.flatMap((s) => s.winners);
   const lastCycleWinners = session.cycles[session.cycles.length - 1]?.groups.flatMap((g) => g.winners) ?? [];
 
@@ -141,7 +157,7 @@ export function DrawingScreen() {
           className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
         >
           <ArrowLeft size={16} />
-          Vue d'ensemble
+          Vue d&apos;ensemble
         </button>
         <div className="text-center">
           <h2 className="text-lg font-bold text-white">{cycle.name}</h2>
@@ -269,7 +285,6 @@ function SingleGroupDraw({
   onRevealDone: () => void;
   useShuffleMode: boolean;
 }) {
-  const currentWinnerId = state.precomputedWinners[state.currentWinnerIndex - 1]?.id ?? state.precomputedWinners[0]?.id;
   const nextWinnerId = state.precomputedWinners[state.currentWinnerIndex]?.id ?? null;
 
   return (

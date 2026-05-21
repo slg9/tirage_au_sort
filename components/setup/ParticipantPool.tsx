@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Shuffle, Trash2 } from "lucide-react";
+import { Check, Search, Shuffle, Trash2, X } from "lucide-react";
 import { Participant } from "@/lib/types";
 import { DraggableParticipantCard } from "./ParticipantCard";
 import { AutoAssignDialog } from "./AutoAssignDialog";
@@ -17,7 +17,10 @@ type Props = {
 export function ParticipantPool({ participants, total, cycleId }: Props) {
   const clearAllGroups = useStore((s) => s.clearAllGroups);
   const removeParticipantFromPool = useStore((s) => s.removeParticipantFromPool);
+  const renameParticipant = useStore((s) => s.renameParticipant);
   const [search, setSearch] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState("");
   const [showAutoAssign, setShowAutoAssign] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
 
@@ -26,6 +29,19 @@ export function ParticipantPool({ participants, total, cycleId }: Props) {
   const filtered = participants.filter((p) =>
     p.name.toLowerCase().includes(search.toLowerCase())
   );
+
+  const startEditing = (participant: Participant) => {
+    setEditingId(participant.id);
+    setEditingName(participant.name);
+  };
+
+  const saveEdit = (id: string) => {
+    if (editingName.trim()) {
+      renameParticipant(id, editingName.trim());
+    }
+    setEditingId(null);
+    setEditingName("");
+  };
 
   return (
     <div className="flex flex-col h-full">
@@ -83,11 +99,43 @@ export function ParticipantPool({ participants, total, cycleId }: Props) {
                 exit={{ opacity: 0, x: 10 }}
                 className="min-w-0"
               >
-                <DraggableParticipantCard
-                  participant={p}
-                  onRemove={() => removeParticipantFromPool(p.id)}
-                  removeTitle="Supprimer définitivement"
-                />
+                {editingId === p.id ? (
+                  <div className="min-w-0 flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-fuchsia-500/40">
+                    <input
+                      autoFocus
+                      value={editingName}
+                      onChange={(event) => setEditingName(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") saveEdit(p.id);
+                        if (event.key === "Escape") setEditingId(null);
+                      }}
+                      className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => saveEdit(p.id)}
+                      className="shrink-0 rounded-md p-1 text-emerald-400 transition-colors hover:bg-emerald-500/10 hover:text-emerald-300"
+                      title="Valider"
+                    >
+                      <Check size={14} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditingId(null)}
+                      className="shrink-0 rounded-md p-1 text-slate-500 transition-colors hover:bg-white/10 hover:text-slate-200"
+                      title="Annuler"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ) : (
+                  <DraggableParticipantCard
+                    participant={p}
+                    onEdit={() => startEditing(p)}
+                    onRemove={() => removeParticipantFromPool(p.id)}
+                    removeTitle="Supprimer définitivement"
+                  />
+                )}
               </motion.div>
             ))}
           </AnimatePresence>

@@ -1,6 +1,6 @@
 "use client";
 import { useDraggable } from "@dnd-kit/core";
-import { GripVertical, X } from "lucide-react";
+import { Edit2, GripVertical, X } from "lucide-react";
 import { Participant } from "@/lib/types";
 import { ParticipantAvatar } from "@/components/shared/ParticipantAvatar";
 
@@ -10,9 +10,10 @@ type Props = {
   compact?: boolean;
   onRemove?: () => void;
   removeTitle?: string;
+  onEdit?: () => void;
 };
 
-export function DraggableParticipantCard({ participant, compact, onRemove, removeTitle }: Props) {
+export function DraggableParticipantCard({ participant, compact, onRemove, removeTitle, onEdit }: Props) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: participant.id,
     data: { type: "participant", participant },
@@ -37,6 +38,21 @@ export function DraggableParticipantCard({ participant, compact, onRemove, remov
         color={participant.assignedColor}
       />
       <span className="min-w-0 flex-1 text-sm text-white truncate">{participant.name}</span>
+      {onEdit && (
+        <button
+          type="button"
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={(event) => {
+            event.stopPropagation();
+            onEdit();
+          }}
+          className="shrink-0 rounded-md p-1 text-slate-500 transition-colors hover:bg-white/10 hover:text-slate-200"
+          title="Modifier le nom"
+          aria-label="Modifier le nom"
+        >
+          <Edit2 size={13} />
+        </button>
+      )}
       {onRemove && (
         <button
           type="button"
