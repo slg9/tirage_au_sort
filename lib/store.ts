@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { Session, Cycle, DrawGroup, Participant, AppView, SetupStep } from "./types";
 import { parseCsv } from "./csv";
-import { drawWinners, distributeEqually, WINNER_COLORS } from "./draw";
+import { distributeEqually, WINNER_COLORS } from "./draw";
 
 let colorIdx = 0;
 function nextColor(): string {
@@ -31,8 +31,49 @@ function makeCycle(index: number, groups: DrawGroup[] = []): Cycle {
   };
 }
 
+function upsertSavedSession(savedSessions: Session[], session: Session): Session[] {
+  const existingIndex = savedSessions.findIndex((saved) => saved.id === session.id);
+  if (existingIndex === -1) return [session, ...savedSessions];
+
+  const next = [...savedSessions];
+  next[existingIndex] = session;
+  return next;
+}
+
+function persistSession(
+  state: Pick<Store, "savedSessions">,
+  session: Session,
+  extra: Partial<Pick<Store, "view" | "setupStep">> = {}
+) {
+  return {
+    session,
+    savedSessions: upsertSavedSession(state.savedSessions, session),
+    ...extra,
+  };
+}
+
+function getNextColorIndex(session: Session | null): number {
+  if (!session) return 0;
+  const colors = new Set<string>();
+  session.participantsPool.forEach((participant) => {
+    if (participant.assignedColor) colors.add(participant.assignedColor);
+  });
+  session.cycles.forEach((cycle) => {
+    cycle.groups.forEach((group) => {
+      group.participants.forEach((participant) => {
+        if (participant.assignedColor) colors.add(participant.assignedColor);
+      });
+      group.winners.forEach((participant) => {
+        if (participant.assignedColor) colors.add(participant.assignedColor);
+      });
+    });
+  });
+  return colors.size;
+}
+
 type Store = {
   session: Session | null;
+  savedSessions: Session[];
   view: AppView;
   setupStep: SetupStep;
   isMuted: boolean;
@@ -40,6 +81,8 @@ type Store = {
 
   // Session init
   createSession: (name: string) => void;
+  loadSavedSession: (id: string) => void;
+  deleteSavedSession: (id: string) => void;
   updateSessionName: (name: string) => void;
 
   // Pool
@@ -94,6 +137,7 @@ export const useStore = create<Store>()(
   persist(
     (set, get) => ({
       session: null,
+      savedSessions: [],
       view: "setup",
       setupStep: "pool",
       isMuted: false,
@@ -102,22 +146,40 @@ export const useStore = create<Store>()(
       createSession: (name) => {
         colorIdx = 0;
         const cycle0 = makeCycle(0, [makeGroup("Groupe A")]);
-        set({
-          session: {
+        set((s) => {
+          const session: Session = {
             id: crypto.randomUUID(),
             name,
             participantsPool: [],
             cycles: [cycle0],
             currentCycleIndex: 0,
             createdAt: Date.now(),
-          },
-          view: "setup",
-          setupStep: "pool",
+          };
+          return persistSession(s, session, { view: "setup", setupStep: "pool" });
         });
       },
 
+      loadSavedSession: (id) =>
+        set((s) => {
+          const session = s.savedSessions.find((saved) => saved.id === id);
+          if (!session) return {};
+          colorIdx = getNextColorIndex(session);
+          return {
+            session,
+            view: session.participantsPool.length >= 2 ? "overview" : "setup",
+            setupStep: session.participantsPool.length >= 2 ? "groups" : "pool",
+          };
+        }),
+
+      deleteSavedSession: (id) =>
+        set((s) => {
+          const savedSessions = s.savedSessions.filter((saved) => saved.id !== id);
+          if (s.session?.id !== id) return { savedSessions };
+          return { savedSessions, session: null, view: "setup", setupStep: "pool" };
+        }),
+
       updateSessionName: (name) =>
-        set((s) => s.session ? { session: { ...s.session, name } } : {}),
+        set((s) => s.session ? persistSession(s, { ...s.session, name }) : {}),
 
       importPoolFromCsv: (csvContent) => {
         const result = parseCsv(csvContent);
@@ -136,7 +198,7 @@ export const useStore = create<Store>()(
               ? { ...c, groups: c.groups.map((g) => ({ ...g, participants: [], winners: [], status: "pending" as const })) }
               : c
           );
-          return { session: { ...s.session, participantsPool: participants, cycles } };
+          return persistSession(s, { ...s.session, participantsPool: participants, cycles });
         });
         return { success: true, count: participants.length };
       },
@@ -145,7 +207,7 @@ export const useStore = create<Store>()(
         const p: Participant = { id: crypto.randomUUID(), name: name.trim().slice(0, 40) };
         set((s) => {
           if (!s.session) return {};
-          return { session: { ...s.session, participantsPool: [...s.session.participantsPool, p] } };
+          return persistSession(s, { ...s.session, participantsPool: [...s.session.participantsPool, p] });
         });
         return p;
       },
@@ -161,7 +223,7 @@ export const useStore = create<Store>()(
               participants: g.participants.filter((p) => p.id !== id),
             })),
           }));
-          return { session: { ...s.session, participantsPool: pool, cycles } };
+          return persistSession(s, { ...s.session, participantsPool: pool, cycles });
         }),
 
       renameParticipant: (id, newName) =>
@@ -173,7 +235,7 @@ export const useStore = create<Store>()(
             ...c,
             groups: c.groups.map((g) => ({ ...g, participants: g.participants.map(rename) })),
           }));
-          return { session: { ...s.session, participantsPool: pool, cycles } };
+          return persistSession(s, { ...s.session, participantsPool: pool, cycles });
         }),
 
       clearPool: () =>
@@ -182,7 +244,7 @@ export const useStore = create<Store>()(
           const cycles = s.session.cycles.map((c, i) =>
             i === 0 ? { ...c, groups: c.groups.map((g) => ({ ...g, participants: [] })) } : c
           );
-          return { session: { ...s.session, participantsPool: [], cycles } };
+          return persistSession(s, { ...s.session, participantsPool: [], cycles });
         }),
 
       addGroup: (cycleId) =>
@@ -191,9 +253,9 @@ export const useStore = create<Store>()(
           const cycles = s.session.cycles.map((c) => {
             if (c.id !== cycleId) return c;
             const idx = c.groups.length;
-            return { ...c, groups: [...c.groups, makeGroup(`Groupe ${String.fromCharCode(65 + idx)}`)] };
+            return { ...c, groups: [makeGroup(`Groupe ${String.fromCharCode(65 + idx)}`), ...c.groups] };
           });
-          return { session: { ...s.session, cycles } };
+          return persistSession(s, { ...s.session, cycles });
         }),
 
       removeGroup: (cycleId, groupId) =>
@@ -203,7 +265,7 @@ export const useStore = create<Store>()(
             if (c.id !== cycleId) return c;
             return { ...c, groups: c.groups.filter((g) => g.id !== groupId) };
           });
-          return { session: { ...s.session, cycles } };
+          return persistSession(s, { ...s.session, cycles });
         }),
 
       renameGroup: (cycleId, groupId, name) =>
@@ -213,7 +275,7 @@ export const useStore = create<Store>()(
             if (c.id !== cycleId) return c;
             return { ...c, groups: c.groups.map((g) => g.id === groupId ? { ...g, name } : g) };
           });
-          return { session: { ...s.session, cycles } };
+          return persistSession(s, { ...s.session, cycles });
         }),
 
       assignParticipantToGroup: (participantId, targetGroupId) =>
@@ -232,7 +294,7 @@ export const useStore = create<Store>()(
               return { ...g, participants: g.participants.filter((p) => p.id !== participantId) };
             }),
           }));
-          return { session: { ...s.session, cycles } };
+          return persistSession(s, { ...s.session, cycles });
         }),
 
       unassignParticipantFromGroup: (participantId, groupId) =>
@@ -246,7 +308,7 @@ export const useStore = create<Store>()(
                 : g
             ),
           }));
-          return { session: { ...s.session, cycles } };
+          return persistSession(s, { ...s.session, cycles });
         }),
 
       quickAddToGroup: (cycleId, groupId, name) => {
@@ -274,7 +336,7 @@ export const useStore = create<Store>()(
           const cycles = s.session.cycles.map((c, i) =>
             i === 0 ? { ...c, groups: newGroups } : c
           );
-          return { session: { ...s.session, cycles } };
+          return persistSession(s, { ...s.session, cycles });
         }),
 
       clearAllGroups: (cycleId) =>
@@ -285,7 +347,7 @@ export const useStore = create<Store>()(
               ? { ...c, groups: c.groups.map((g) => ({ ...g, participants: [] })) }
               : c
           );
-          return { session: { ...s.session, cycles } };
+          return persistSession(s, { ...s.session, cycles });
         }),
 
       setWinnersCount: (cycleId, groupId, count) =>
@@ -295,7 +357,7 @@ export const useStore = create<Store>()(
             if (c.id !== cycleId) return c;
             return { ...c, groups: c.groups.map((g) => g.id === groupId ? { ...g, winnersCount: count } : g) };
           });
-          return { session: { ...s.session, cycles } };
+          return persistSession(s, { ...s.session, cycles });
         }),
 
       reorderGroups: (cycleId, groupIds) =>
@@ -307,7 +369,7 @@ export const useStore = create<Store>()(
             const ordered = groupIds.map((id) => map.get(id)).filter(Boolean) as DrawGroup[];
             return { ...c, groups: ordered };
           });
-          return { session: { ...s.session, cycles } };
+          return persistSession(s, { ...s.session, cycles });
         }),
 
       addCycle: () =>
@@ -320,7 +382,7 @@ export const useStore = create<Store>()(
           const newCycle = makeCycle(idx, [
             makeGroup("Groupe A", prevWinners, Math.max(1, Math.ceil(prevWinners.length / 2))),
           ]);
-          return { session: { ...s.session, cycles: [...s.session.cycles, newCycle] } };
+          return persistSession(s, { ...s.session, cycles: [...s.session.cycles, newCycle] });
         }),
 
       removeCycle: (id) =>
@@ -329,7 +391,7 @@ export const useStore = create<Store>()(
           const cycles = s.session.cycles
             .filter((c) => c.id !== id)
             .map((c, i) => ({ ...c, index: i }));
-          return { session: { ...s.session, cycles } };
+          return persistSession(s, { ...s.session, cycles });
         }),
 
       toggleSplitMode: (cycleId) =>
@@ -345,8 +407,6 @@ export const useStore = create<Store>()(
               return { ...c, splitMode: newMode as "merged" | "subgroups", groups: [makeGroup("Groupe A", unique, 1)] };
             } else {
               // Split into 2 subgroups
-              const allParticipants = c.groups.flatMap((g) => g.participants);
-              const unique = Array.from(new Map(allParticipants.map((p) => [p.id, p])).values());
               return {
                 ...c,
                 splitMode: newMode as "merged" | "subgroups",
@@ -357,7 +417,7 @@ export const useStore = create<Store>()(
               };
             }
           });
-          return { session: { ...s.session, cycles } };
+          return persistSession(s, { ...s.session, cycles });
         }),
 
       addSubgroup: (cycleId) =>
@@ -368,7 +428,7 @@ export const useStore = create<Store>()(
             const idx = c.groups.length;
             return { ...c, groups: [...c.groups, makeGroup(`Sous-groupe ${String.fromCharCode(65 + idx)}`, [], 1)] };
           });
-          return { session: { ...s.session, cycles } };
+          return persistSession(s, { ...s.session, cycles });
         }),
 
       removeSubgroup: (cycleId, groupId) =>
@@ -379,7 +439,7 @@ export const useStore = create<Store>()(
             if (c.groups.length <= 2) return c; // Minimum 2 subgroups
             return { ...c, groups: c.groups.filter((g) => g.id !== groupId) };
           });
-          return { session: { ...s.session, cycles } };
+          return persistSession(s, { ...s.session, cycles });
         }),
 
       assignWinnerToSubgroup: (cycleId, groupId, participantId) =>
@@ -405,7 +465,7 @@ export const useStore = create<Store>()(
               }),
             };
           });
-          return { session: { ...s.session, cycles } };
+          return persistSession(s, { ...s.session, cycles });
         }),
 
       unassignWinnerFromSubgroup: (cycleId, groupId, participantId) =>
@@ -422,7 +482,7 @@ export const useStore = create<Store>()(
               ),
             };
           });
-          return { session: { ...s.session, cycles } };
+          return persistSession(s, { ...s.session, cycles });
         }),
 
       startSession: () => set({ view: "overview" }),
@@ -455,7 +515,7 @@ export const useStore = create<Store>()(
               ),
             };
           });
-          return { session: { ...s.session, participantsPool: pool, cycles } };
+          return persistSession(s, { ...s.session, participantsPool: pool, cycles });
         }),
 
       completeCycle: (cycleId) =>
@@ -464,7 +524,7 @@ export const useStore = create<Store>()(
           const cycles = s.session.cycles.map((c) =>
             c.id === cycleId ? { ...c, status: "done" as const } : c
           );
-          return { session: { ...s.session, cycles } };
+          return persistSession(s, { ...s.session, cycles });
         }),
 
       prepareNextCycle: () =>
@@ -486,7 +546,7 @@ export const useStore = create<Store>()(
             return c;
           });
 
-          return { session: { ...s.session, cycles, currentCycleIndex: nextIdx } };
+          return persistSession(s, { ...s.session, cycles, currentCycleIndex: nextIdx });
         }),
 
       assignWinnerColor: (participantId, color) =>
@@ -495,7 +555,7 @@ export const useStore = create<Store>()(
           const pool = s.session.participantsPool.map((p) =>
             p.id === participantId ? { ...p, assignedColor: color } : p
           );
-          return { session: { ...s.session, participantsPool: pool } };
+          return persistSession(s, { ...s.session, participantsPool: pool });
         }),
 
       resetSession: () =>
@@ -509,10 +569,11 @@ export const useStore = create<Store>()(
             ...(i > 0 ? { groups: c.groups.map((g) => ({ ...g, participants: [], winners: [], status: "pending" as const })) } : {}),
           }));
           const pool = s.session.participantsPool.map((p) => ({ ...p, assignedColor: undefined }));
-          return {
-            session: { ...s.session, cycles, currentCycleIndex: 0, participantsPool: pool },
-            view: "overview",
-          };
+          return persistSession(
+            s,
+            { ...s.session, cycles, currentCycleIndex: 0, participantsPool: pool },
+            { view: "overview" }
+          );
         }),
 
       newSession: () => {
@@ -527,10 +588,21 @@ export const useStore = create<Store>()(
       name: "tirage-au-sort-store",
       partialize: (state) => ({
         session: state.session,
-        view: state.view === "drawing" ? "overview" : state.view,
+        savedSessions: state.savedSessions,
+        view: state.view,
+        setupStep: state.setupStep,
         isMuted: state.isMuted,
         isHapticsEnabled: state.isHapticsEnabled,
       }),
+      onRehydrateStorage: () => (state) => {
+        if (!state) return;
+        const sessions = state.savedSessions ?? [];
+        const activeSession = state.session;
+        state.savedSessions = activeSession
+          ? upsertSavedSession(sessions, activeSession)
+          : sessions;
+        colorIdx = getNextColorIndex(activeSession);
+      },
     }
   )
 );

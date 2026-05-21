@@ -1,6 +1,6 @@
 "use client";
 import { useDraggable } from "@dnd-kit/core";
-import { GripVertical } from "lucide-react";
+import { GripVertical, X } from "lucide-react";
 import { Participant } from "@/lib/types";
 import { ParticipantAvatar } from "@/components/shared/ParticipantAvatar";
 
@@ -8,12 +8,14 @@ type Props = {
   participant: Participant;
   isDragging?: boolean;
   compact?: boolean;
+  onRemove?: () => void;
+  removeTitle?: string;
 };
 
-export function DraggableParticipantCard({ participant, compact }: Props) {
+export function DraggableParticipantCard({ participant, compact, onRemove, removeTitle }: Props) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: participant.id,
-    data: { participant },
+    data: { type: "participant", participant },
   });
 
   return (
@@ -35,6 +37,21 @@ export function DraggableParticipantCard({ participant, compact }: Props) {
         color={participant.assignedColor}
       />
       <span className="min-w-0 flex-1 text-sm text-white truncate">{participant.name}</span>
+      {onRemove && (
+        <button
+          type="button"
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={(event) => {
+            event.stopPropagation();
+            onRemove();
+          }}
+          className="shrink-0 rounded-md p-1 text-slate-500 transition-colors hover:bg-red-500/20 hover:text-red-400"
+          title={removeTitle}
+          aria-label={removeTitle}
+        >
+          <X size={13} />
+        </button>
+      )}
     </div>
   );
 }

@@ -6,18 +6,66 @@ import {
   DragEndEvent,
   DragStartEvent,
   PointerSensor,
+  pointerWithin,
+  rectIntersection,
   useSensor,
   useSensors,
+  type CollisionDetection,
+  type Modifier,
 } from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  rectSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, AlertCircle, Play, ChevronLeft } from "lucide-react";
-import { Participant } from "@/lib/types";
+import { Plus, AlertCircle, Play, ChevronLeft, GripVertical } from "lucide-react";
+import { DrawGroup, Participant } from "@/lib/types";
 import { ParticipantPool } from "./ParticipantPool";
 import { GroupDropZone } from "./GroupDropZone";
 import { AdvancedCycleConfig } from "./AdvancedCycleConfig";
 import { StaticParticipantCard } from "./ParticipantCard";
 import { useStore } from "@/lib/store";
 import { validateSessionForStart } from "@/lib/validation";
+
+const cursorCollisionDetection: CollisionDetection = (args) => {
+  const pointerCollisions = pointerWithin(args);
+  return pointerCollisions.length > 0 ? pointerCollisions : rectIntersection(args);
+};
+
+const snapOverlayToCursor: Modifier = ({
+  activatorEvent,
+  activeNodeRect,
+  overlayNodeRect,
+  transform,
+}) => {
+  if (!activatorEvent || !activeNodeRect || !overlayNodeRect) return transform;
+
+  const point = getClientPoint(activatorEvent);
+  if (!point) return transform;
+
+  return {
+    ...transform,
+    x: transform.x + point.x - activeNodeRect.left - overlayNodeRect.width / 2,
+    y: transform.y + point.y - activeNodeRect.top - overlayNodeRect.height / 2,
+  };
+};
+
+const dragOverlayModifiers = [snapOverlayToCursor];
+
+function getClientPoint(event: Event): { x: number; y: number } | null {
+  if (event instanceof MouseEvent) {
+    return { x: event.clientX, y: event.clientY };
+  }
+
+  if (typeof TouchEvent !== "undefined" && event instanceof TouchEvent && event.touches.length > 0) {
+    return { x: event.touches[0].clientX, y: event.touches[0].clientY };
+  }
+
+  return null;
+}
 
 export function GroupComposer() {
   const session = useStore((s) => s.session);
@@ -26,10 +74,12 @@ export function GroupComposer() {
   const removeCycle = useStore((s) => s.removeCycle);
   const assignParticipantToGroup = useStore((s) => s.assignParticipantToGroup);
   const unassignParticipantFromGroup = useStore((s) => s.unassignParticipantFromGroup);
+  const reorderGroups = useStore((s) => s.reorderGroups);
   const startSession = useStore((s) => s.startSession);
   const setSetupStep = useStore((s) => s.setSetupStep);
 
   const [activeParticipant, setActiveParticipant] = useState<Participant | null>(null);
+  const [activeGroupName, setActiveGroupName] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -49,17 +99,42 @@ export function GroupComposer() {
   const canStart = errors.length === 0;
 
   const handleDragStart = (event: DragStartEvent) => {
-    const p = event.active.data.current?.participant as Participant;
+    const data = event.active.data.current;
+    if (data?.type === "group") {
+      setActiveGroupName(data.groupName as string);
+      setActiveParticipant(null);
+      return;
+    }
+
+    const p = data?.participant as Participant;
     setActiveParticipant(p ?? null);
+    setActiveGroupName(null);
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
     setActiveParticipant(null);
+    setActiveGroupName(null);
     const { active, over } = event;
     if (!over) return;
 
-    const participantId = active.id as string;
+    const activeData = active.data.current;
     const overData = over.data.current;
+    const overGroupId = overData?.groupId as string | undefined;
+
+    if (activeData?.type === "group") {
+      const activeGroupId = activeData.groupId as string;
+      if (!cycle0 || !overGroupId || activeGroupId === overGroupId) return;
+
+      const oldIndex = cycle0.groups.findIndex((group) => group.id === activeGroupId);
+      const newIndex = cycle0.groups.findIndex((group) => group.id === overGroupId);
+      if (oldIndex === -1 || newIndex === -1) return;
+
+      const nextGroups = arrayMove(cycle0.groups, oldIndex, newIndex).map((group) => group.id);
+      reorderGroups(cycle0.id, nextGroups);
+      return;
+    }
+
+    const participantId = active.id as string;
 
     if (overData?.isPool) {
       // Find which group this participant is in
@@ -73,7 +148,12 @@ export function GroupComposer() {
   };
 
   return (
-    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={cursorCollisionDetection}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
       <div className="space-y-4 sm:space-y-6">
         {/* Back button */}
         <button
@@ -116,21 +196,20 @@ export function GroupComposer() {
               )}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-3">
-              <AnimatePresence mode="popLayout">
-                {cycle0?.groups.map((group) => (
-                  <motion.div
-                    key={group.id}
-                    layout
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.9 }}
-                  >
-                    <GroupDropZone group={group} cycleId={cycle0.id} />
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-            </div>
+            {cycle0 && (
+              <SortableContext
+                items={cycle0.groups.map((group) => `group:${group.id}`)}
+                strategy={rectSortingStrategy}
+              >
+                <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-3">
+                  <AnimatePresence mode="popLayout">
+                    {cycle0.groups.map((group) => (
+                      <SortableGroupDropZone key={group.id} group={group} cycleId={cycle0.id} />
+                    ))}
+                  </AnimatePresence>
+                </div>
+              </SortableContext>
+            )}
           </div>
         </div>
 
@@ -196,9 +275,67 @@ export function GroupComposer() {
         </button>
       </div>
 
-      <DragOverlay dropAnimation={null}>
+      <DragOverlay dropAnimation={null} modifiers={dragOverlayModifiers}>
         {activeParticipant && <StaticParticipantCard participant={activeParticipant} />}
+        {activeGroupName && (
+          <div className="rounded-xl border border-fuchsia-500/40 bg-slate-950/95 px-4 py-3 text-sm font-medium text-white shadow-xl shadow-fuchsia-500/20">
+            {activeGroupName}
+          </div>
+        )}
       </DragOverlay>
     </DndContext>
+  );
+}
+
+function SortableGroupDropZone({
+  group,
+  cycleId,
+}: {
+  group: DrawGroup;
+  cycleId: string;
+}) {
+  const {
+    attributes,
+    listeners,
+    setActivatorNodeRef,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: `group:${group.id}`,
+    data: { type: "group", groupId: group.id, groupName: group.name },
+  });
+
+  return (
+    <motion.div
+      ref={setNodeRef}
+      layout
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: isDragging ? 0.45 : 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.9 }}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+      }}
+    >
+      <GroupDropZone
+        group={group}
+        cycleId={cycleId}
+        dragHandle={
+          <button
+            ref={setActivatorNodeRef}
+            type="button"
+            className="shrink-0 rounded-md p-1 text-slate-500 transition-colors hover:bg-white/10 hover:text-slate-200 active:cursor-grabbing"
+            title="Réordonner le groupe"
+            aria-label="Réordonner le groupe"
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical size={14} />
+          </button>
+        }
+      />
+    </motion.div>
   );
 }

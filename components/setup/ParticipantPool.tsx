@@ -16,6 +16,7 @@ type Props = {
 
 export function ParticipantPool({ participants, total, cycleId }: Props) {
   const clearAllGroups = useStore((s) => s.clearAllGroups);
+  const removeParticipantFromPool = useStore((s) => s.removeParticipantFromPool);
   const [search, setSearch] = useState("");
   const [showAutoAssign, setShowAutoAssign] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
@@ -82,7 +83,11 @@ export function ParticipantPool({ participants, total, cycleId }: Props) {
                 exit={{ opacity: 0, x: 10 }}
                 className="min-w-0"
               >
-                <DraggableParticipantCard participant={p} />
+                <DraggableParticipantCard
+                  participant={p}
+                  onRemove={() => removeParticipantFromPool(p.id)}
+                  removeTitle="Supprimer définitivement"
+                />
               </motion.div>
             ))}
           </AnimatePresence>

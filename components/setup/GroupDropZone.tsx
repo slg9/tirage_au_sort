@@ -1,6 +1,6 @@
 "use client";
 import { useDroppable } from "@dnd-kit/core";
-import { useState, KeyboardEvent } from "react";
+import { useState, KeyboardEvent, ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Trash2, Plus, Users } from "lucide-react";
 import { DrawGroup } from "@/lib/types";
@@ -11,9 +11,10 @@ import { isGroupValid } from "@/lib/validation";
 type Props = {
   group: DrawGroup;
   cycleId: string;
+  dragHandle?: ReactNode;
 };
 
-export function GroupDropZone({ group, cycleId }: Props) {
+export function GroupDropZone({ group, cycleId, dragHandle }: Props) {
   const renameGroup = useStore((s) => s.renameGroup);
   const removeGroup = useStore((s) => s.removeGroup);
   const setWinnersCount = useStore((s) => s.setWinnersCount);
@@ -54,6 +55,9 @@ export function GroupDropZone({ group, cycleId }: Props) {
     >
       {/* Header */}
       <div className="flex flex-wrap items-center gap-2 px-3 pt-3 pb-2 border-b border-white/5">
+        {dragHandle && (
+          dragHandle
+        )}
         {isEditingName ? (
           <input
             autoFocus
@@ -103,9 +107,14 @@ export function GroupDropZone({ group, cycleId }: Props) {
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.8 }}
-                onDoubleClick={() => unassignParticipantFromGroup(p.id, group.id)}
-              >
-                <DraggableParticipantCard participant={p} compact />
+              onDoubleClick={() => unassignParticipantFromGroup(p.id, group.id)}
+            >
+                <DraggableParticipantCard
+                  participant={p}
+                  compact
+                  onRemove={() => unassignParticipantFromGroup(p.id, group.id)}
+                  removeTitle="Retirer du groupe"
+                />
               </motion.div>
             ))}
           </AnimatePresence>

@@ -1,17 +1,20 @@
 "use client";
 import { useState, KeyboardEvent } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, X, Edit2, Check, AlertCircle } from "lucide-react";
+import { Plus, X, Edit2, Check, AlertCircle, FolderOpen, Trash2 } from "lucide-react";
 import { CsvDropZone } from "./CsvDropZone";
 import { useStore } from "@/lib/store";
 
 export function PoolImport() {
   const session = useStore((s) => s.session);
+  const savedSessions = useStore((s) => s.savedSessions);
   const importPoolFromCsv = useStore((s) => s.importPoolFromCsv);
   const addParticipantToPool = useStore((s) => s.addParticipantToPool);
   const removeParticipantFromPool = useStore((s) => s.removeParticipantFromPool);
   const renameParticipant = useStore((s) => s.renameParticipant);
   const setSetupStep = useStore((s) => s.setSetupStep);
+  const loadSavedSession = useStore((s) => s.loadSavedSession);
+  const deleteSavedSession = useStore((s) => s.deleteSavedSession);
 
   const [csvPreview, setCsvPreview] = useState<string[]>([]);
   const [csvError, setCsvError] = useState<string>();
@@ -20,6 +23,16 @@ export function PoolImport() {
   const [editingName, setEditingName] = useState("");
 
   const pool = session?.participantsPool ?? [];
+  const otherSessions = savedSessions.filter((saved) => saved.id !== session?.id);
+  const manualQuery = newName.trim().toLowerCase();
+  const matchingParticipants = manualQuery
+    ? pool
+        .filter((participant) => participant.name.toLowerCase().includes(manualQuery))
+        .slice(0, 6)
+    : [];
+  const hasExactManualMatch = Boolean(
+    manualQuery && pool.some((participant) => participant.name.toLowerCase() === manualQuery)
+  );
   const nameSet = new Map<string, number>();
   pool.forEach((p) => nameSet.set(p.name.toLowerCase(), (nameSet.get(p.name.toLowerCase()) ?? 0) + 1));
 
@@ -36,7 +49,7 @@ export function PoolImport() {
   };
 
   const handleAddManual = () => {
-    if (!newName.trim()) return;
+    if (!newName.trim() || hasExactManualMatch) return;
     addParticipantToPool(newName.trim());
     setNewName("");
   };
@@ -67,6 +80,44 @@ export function PoolImport() {
         />
       </div>
 
+      {otherSessions.length > 0 && (
+        <div className="rounded-xl border border-white/10 bg-white/3 p-3">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <h3 className="text-sm font-medium text-slate-300">Tirages sauvegardés</h3>
+            <span className="text-xs text-slate-500">{otherSessions.length}</span>
+          </div>
+          <div className="max-h-32 overflow-y-auto space-y-1.5 pr-1">
+            {otherSessions.map((saved) => (
+              <div
+                key={saved.id}
+                className="flex min-w-0 items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm text-white">{saved.name}</p>
+                  <p className="text-xs text-slate-500">
+                    {saved.cycles.length} cycle(s) · {saved.participantsPool.length} participant(s)
+                  </p>
+                </div>
+                <button
+                  onClick={() => loadSavedSession(saved.id)}
+                  className="shrink-0 rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
+                  title="Ouvrir ce tirage"
+                >
+                  <FolderOpen size={15} />
+                </button>
+                <button
+                  onClick={() => deleteSavedSession(saved.id)}
+                  className="shrink-0 rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-red-500/20 hover:text-red-400"
+                  title="Supprimer ce tirage"
+                >
+                  <Trash2 size={15} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] gap-4 lg:items-start">
         <div className="space-y-4">
           {/* CSV Import */}
@@ -78,25 +129,46 @@ export function PoolImport() {
           {/* Manual add */}
           <div>
             <h3 className="text-sm font-medium text-slate-300 mb-2">Ajouter manuellement</h3>
-            <div className="flex flex-col sm:flex-row gap-2">
-              <input
-                type="text"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Prénom du participant..."
-                maxLength={40}
-                className="min-w-0 flex-1 px-4 py-2.5 rounded-xl bg-white/5 border border-white/15 text-white placeholder-slate-500 focus:outline-none focus:border-fuchsia-500/60 transition-all"
-              />
+            <div className="flex flex-col sm:flex-row gap-2 items-start">
+              <div className="relative w-full min-w-0 flex-1">
+                <input
+                  type="text"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Prénom du participant..."
+                  maxLength={40}
+                  className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/15 text-white placeholder-slate-500 focus:outline-none focus:border-fuchsia-500/60 transition-all"
+                />
+                {matchingParticipants.length > 0 && (
+                  <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-30 rounded-xl border border-white/10 bg-slate-950/95 p-1.5 shadow-xl shadow-black/30 backdrop-blur">
+                    {matchingParticipants.map((participant) => (
+                      <button
+                        key={participant.id}
+                        type="button"
+                        onMouseDown={(event) => event.preventDefault()}
+                        onClick={() => setNewName(participant.name)}
+                        className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm text-slate-300 transition-colors hover:bg-white/10 hover:text-white"
+                      >
+                        <span className="min-w-0 truncate">{participant.name}</span>
+                        <span className="shrink-0 text-xs text-slate-500">déjà dans le pool</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
               <button
                 onClick={handleAddManual}
-                disabled={!newName.trim()}
-                className="px-4 py-2.5 rounded-xl bg-fuchsia-600 hover:bg-fuchsia-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-medium transition-all flex items-center justify-center gap-2"
+                disabled={!newName.trim() || hasExactManualMatch}
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-fuchsia-600 hover:bg-fuchsia-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-medium transition-all flex items-center justify-center gap-2"
               >
                 <Plus size={18} />
                 Ajouter
               </button>
             </div>
+            {hasExactManualMatch && (
+              <p className="mt-2 text-xs text-amber-400">Ce participant existe déjà dans le pool.</p>
+            )}
           </div>
         </div>
 
