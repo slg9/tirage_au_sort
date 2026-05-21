@@ -74,7 +74,7 @@ export function GroupComposer() {
 
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         {/* Back button */}
         <button
           onClick={() => setSetupStep("pool")}
@@ -85,10 +85,10 @@ export function GroupComposer() {
         </button>
 
         {/* Cycle 0 composition */}
-        <div className="flex flex-col lg:flex-row gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(230px,280px)_minmax(0,1fr)] xl:grid-cols-[300px_minmax(0,1fr)] gap-4 lg:gap-6 items-start">
           {/* Left: pool */}
-          <div className="lg:w-64 xl:w-72 shrink-0">
-            <div className="sticky top-4 bg-white/3 border border-white/10 rounded-xl p-4 h-fit max-h-[calc(100vh-200px)] flex flex-col">
+          <div className="min-w-0">
+            <div className="lg:sticky lg:top-4 bg-white/3 border border-white/10 rounded-xl p-3 sm:p-4 h-[min(42vh,360px)] lg:h-[calc(100vh-220px)] lg:min-h-[420px] flex flex-col">
               {cycle0 && (
                 <ParticipantPool
                   participants={unassigned}
@@ -101,14 +101,14 @@ export function GroupComposer() {
 
           {/* Right: groups */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
               <h3 className="text-sm font-medium text-slate-300">
                 Groupes — Cycle 1
               </h3>
               {cycle0 && (
                 <button
                   onClick={() => addGroup(cycle0.id)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white text-sm border border-white/10 transition-all"
+                  className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-3 py-2 sm:py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white text-sm border border-white/10 transition-all"
                 >
                   <Plus size={14} />
                   Ajouter un groupe
@@ -116,7 +116,7 @@ export function GroupComposer() {
               )}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-3">
               <AnimatePresence mode="popLayout">
                 {cycle0?.groups.map((group) => (
                   <motion.div

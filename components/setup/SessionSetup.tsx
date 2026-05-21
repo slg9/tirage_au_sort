@@ -18,9 +18,9 @@ export function SessionSetup() {
   const poolCount = session?.participantsPool.length ?? 0;
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8">
+    <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-6 lg:py-8">
       {/* Stepper */}
-      <div className="flex items-center justify-center gap-2 mb-8">
+      <div className="flex items-center justify-center gap-2 mb-4 sm:mb-6">
         {steps.map((step, i) => {
           const Icon = step.icon;
           const isActive = setupStep === step.id;
@@ -28,11 +28,11 @@ export function SessionSetup() {
           return (
             <div key={step.id} className="flex items-center gap-2">
               {i > 0 && (
-                <div className={`w-12 h-px transition-all ${isDone ? "bg-fuchsia-500" : "bg-white/10"}`} />
+                <div className={`w-5 sm:w-12 h-px transition-all ${isDone ? "bg-fuchsia-500" : "bg-white/10"}`} />
               )}
               <button
                 onClick={() => { if (step.id === "groups" && poolCount < 2) return; setSetupStep(step.id); }}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200
+                className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all duration-200
                   ${isActive
                     ? "bg-fuchsia-600 text-white shadow-lg shadow-fuchsia-500/30"
                     : isDone
@@ -49,7 +49,7 @@ export function SessionSetup() {
       </div>
 
       {/* Content */}
-      <div className="bg-white/3 border border-white/10 rounded-2xl p-6 backdrop-blur-sm shadow-xl">
+      <div className="bg-white/3 border border-white/10 rounded-2xl p-3 sm:p-5 lg:p-6 backdrop-blur-sm shadow-xl">
         <AnimatePresence mode="wait">
           {setupStep === "pool" ? (
             <motion.div
@@ -59,7 +59,7 @@ export function SessionSetup() {
               exit={{ opacity: 0, x: 20 }}
               transition={{ duration: 0.2 }}
             >
-              <h2 className="text-xl font-bold text-white mb-6">
+              <h2 className="text-lg sm:text-xl font-bold text-white mb-4">
                 Importer les participants
               </h2>
               <PoolImport />
@@ -72,7 +72,7 @@ export function SessionSetup() {
               exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.2 }}
             >
-              <h2 className="text-xl font-bold text-white mb-6">
+              <h2 className="text-lg sm:text-xl font-bold text-white mb-4">
                 Composer les groupes
               </h2>
               <GroupComposer />

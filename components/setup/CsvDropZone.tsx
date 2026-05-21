@@ -30,13 +30,13 @@ export function CsvDropZone({ onParsed, preview, error }: Props) {
   };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       <div
         onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
         onDragLeave={() => setIsDragging(false)}
         onDrop={onDrop}
         onClick={() => inputRef.current?.click()}
-        className={`relative border-2 border-dashed rounded-xl p-8 cursor-pointer transition-all duration-200 text-center
+        className={`relative border border-dashed rounded-xl p-3 sm:p-4 cursor-pointer transition-all duration-200
           ${isDragging
             ? "border-fuchsia-500 bg-fuchsia-500/10"
             : "border-white/20 bg-white/5 hover:border-white/40 hover:bg-white/8"
@@ -49,15 +49,21 @@ export function CsvDropZone({ onParsed, preview, error }: Props) {
           className="hidden"
           onChange={(e) => { const f = e.target.files?.[0]; if (f) readFile(f); }}
         />
-        <Upload className="mx-auto mb-3 text-fuchsia-400" size={32} />
-        <p className="text-white font-medium mb-1">Glissez votre fichier CSV ici</p>
-        <p className="text-slate-400 text-sm">ou cliquez pour parcourir</p>
-        <p className="text-slate-500 text-xs mt-2">Format : une colonne "prenom" (ou nom/name), une ligne par participant</p>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-fuchsia-500/10 border border-fuchsia-500/20 flex items-center justify-center shrink-0">
+            <Upload className="text-fuchsia-400" size={20} />
+          </div>
+          <div className="min-w-0 text-left">
+            <p className="text-white text-sm font-medium">Importer un CSV</p>
+            <p className="text-slate-400 text-xs">Glissez le fichier ou cliquez pour parcourir</p>
+            <p className="text-slate-500 text-xs mt-1 truncate">Colonne prenom, nom ou name</p>
+          </div>
+        </div>
       </div>
 
       <button
         onClick={(e) => { e.stopPropagation(); downloadSampleCsv(); }}
-        className="flex items-center gap-2 text-sm text-cyan-400 hover:text-cyan-300 transition-colors"
+        className="flex items-center gap-2 text-xs sm:text-sm text-cyan-400 hover:text-cyan-300 transition-colors"
         type="button"
       >
         <Download size={14} />
@@ -73,18 +79,18 @@ export function CsvDropZone({ onParsed, preview, error }: Props) {
 
       {preview.length > 0 && !error && (
         <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30">
-          <div className="flex items-center gap-2 mb-2 text-emerald-400 text-sm font-medium">
+          <div className="flex items-center gap-2 text-emerald-400 text-sm font-medium">
             <FileText size={16} />
             {preview.length} participant(s) détecté(s)
           </div>
-          <div className="max-h-32 overflow-y-auto space-y-1">
+          <div className="mt-2 max-h-24 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 gap-1">
             {preview.slice(0, 20).map((name, i) => (
-              <div key={i} className="text-slate-300 text-xs px-2 py-0.5 rounded bg-white/5">
+              <div key={i} className="text-slate-300 text-xs px-2 py-1 rounded bg-white/5 truncate">
                 {name}
               </div>
             ))}
             {preview.length > 20 && (
-              <div className="text-slate-500 text-xs px-2">... et {preview.length - 20} autres</div>
+              <div className="text-slate-500 text-xs px-2 py-1">+{preview.length - 20} autres</div>
             )}
           </div>
         </div>

@@ -28,11 +28,11 @@ export function ParticipantPool({ participants, total, cycleId }: Props) {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="mb-3">
+      <div className="mb-3 shrink-0">
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-sm font-medium text-slate-300">
             Pool disponible
-            <span className="ml-2 text-xs text-slate-500">({participants.length}/{total} non assignés)</span>
+            <span className="ml-2 text-xs text-slate-500 whitespace-nowrap">({participants.length}/{total})</span>
           </h3>
         </div>
 
@@ -47,18 +47,18 @@ export function ParticipantPool({ participants, total, cycleId }: Props) {
           />
         </div>
 
-        <div className="flex gap-2">
+        <div className="grid grid-cols-2 gap-2">
           <button
             onClick={() => setShowAutoAssign(true)}
             disabled={participants.length < 2}
-            className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-fuchsia-600/20 hover:bg-fuchsia-600/30 disabled:opacity-40 text-fuchsia-300 text-xs font-medium border border-fuchsia-500/20 transition-all"
+            className="min-w-0 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-fuchsia-600/20 hover:bg-fuchsia-600/30 disabled:opacity-40 text-fuchsia-300 text-xs font-medium border border-fuchsia-500/20 transition-all"
           >
             <Shuffle size={12} />
             Auto-répartir
           </button>
           <button
             onClick={() => setShowClearConfirm(true)}
-            className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-red-500/20 text-slate-400 hover:text-red-400 text-xs border border-white/10 transition-all"
+            className="min-w-0 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg bg-white/5 hover:bg-red-500/20 text-slate-400 hover:text-red-400 text-xs border border-white/10 transition-all"
           >
             <Trash2 size={12} />
             Vider groupes
@@ -68,22 +68,25 @@ export function ParticipantPool({ participants, total, cycleId }: Props) {
 
       <div
         ref={setNodeRef}
-        className={`flex-1 overflow-y-auto space-y-1.5 min-h-[200px] rounded-xl p-2 transition-all duration-200
+        className={`min-h-0 flex-1 overflow-y-auto rounded-xl p-2 transition-all duration-200
           ${isOver ? "bg-fuchsia-500/10 border border-fuchsia-500/40" : "border border-transparent"}`}
       >
-        <AnimatePresence mode="popLayout">
-          {filtered.map((p) => (
-            <motion.div
-              key={p.id}
-              layout
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 10 }}
-            >
-              <DraggableParticipantCard participant={p} />
-            </motion.div>
-          ))}
-        </AnimatePresence>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-1.5">
+          <AnimatePresence mode="popLayout">
+            {filtered.map((p) => (
+              <motion.div
+                key={p.id}
+                layout
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 10 }}
+                className="min-w-0"
+              >
+                <DraggableParticipantCard participant={p} />
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
         {filtered.length === 0 && participants.length === 0 && (
           <div className="flex items-center justify-center h-24 text-slate-600 text-sm">
             Tous assignés ! ✓

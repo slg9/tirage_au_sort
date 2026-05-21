@@ -1,0 +1,15 @@
+{
+  "brand": {
+    "name": "WheelDraw",
+    "tagline": "Multi-cycle random draws with an animated fortune wheel",
+    "title": "WheelDraw — Multi-cycle random draws with a fortune wheel",
+    "description": "Run spectacular multi-round random draws with drag & drop, premium animations and a fullscreen presentation mode. 100% free, no signup required.",
+    "shortDescription": "Multi-cycle random draws with an animated fortune wheel"
+  },
+  "app": {
+    "defaultSessionName": "My session",
+    "fallbackSessionName": "Random draw",
+    "overview": "Overview",
+    "drawing": "Draw in progress"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "brand": {
+    "name": "WheelDraw",
+    "tagline": "Tirages au sort multi-cycles avec une roue de la fortune animée",
+    "title": "WheelDraw — Tirages au sort multi-cycles avec roue de la fortune",
+    "description": "Organisez des tirages au sort spectaculaires en plusieurs cycles, avec drag & drop, animations premium et mode présentation plein écran. 100% gratuit, sans inscription.",
+    "shortDescription": "Tirages au sort multi-cycles avec roue de la fortune animée"
+  },
+  "app": {
+    "defaultSessionName": "Ma session",
+    "fallbackSessionName": "Tirage au sort",
+    "overview": "Vue d'ensemble",
+    "drawing": "Tirage en cours"
+  }
+}

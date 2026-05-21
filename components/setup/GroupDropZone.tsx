@@ -2,7 +2,7 @@
 import { useDroppable } from "@dnd-kit/core";
 import { useState, KeyboardEvent } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Trash2, Edit2, Check, Plus, Users } from "lucide-react";
+import { Trash2, Plus, Users } from "lucide-react";
 import { DrawGroup } from "@/lib/types";
 import { DraggableParticipantCard } from "./ParticipantCard";
 import { useStore } from "@/lib/store";
@@ -48,12 +48,12 @@ export function GroupDropZone({ group, cycleId }: Props) {
   return (
     <div
       ref={setNodeRef}
-      className={`flex flex-col rounded-xl border bg-white/3 transition-all duration-200 min-h-[180px]
+      className={`flex flex-col rounded-xl border bg-white/3 transition-all duration-200 min-h-[240px] max-h-[420px] md:max-h-[460px]
         ${borderColor}
         ${isOver ? "bg-fuchsia-500/10 border-fuchsia-500/60 shadow-lg shadow-fuchsia-500/20" : ""}`}
     >
       {/* Header */}
-      <div className="flex items-center gap-2 px-3 pt-3 pb-2 border-b border-white/5">
+      <div className="flex flex-wrap items-center gap-2 px-3 pt-3 pb-2 border-b border-white/5">
         {isEditingName ? (
           <input
             autoFocus
@@ -61,12 +61,12 @@ export function GroupDropZone({ group, cycleId }: Props) {
             onChange={(e) => setNameInput(e.target.value)}
             onBlur={() => { renameGroup(cycleId, group.id, nameInput || group.name); setIsEditingName(false); }}
             onKeyDown={(e) => { if (e.key === "Enter" || e.key === "Escape") { renameGroup(cycleId, group.id, nameInput || group.name); setIsEditingName(false); } }}
-            className="flex-1 bg-transparent text-white text-sm font-medium outline-none border-b border-fuchsia-500"
+            className="min-w-0 flex-1 bg-transparent text-white text-sm font-medium outline-none border-b border-fuchsia-500"
           />
         ) : (
           <button
             onClick={() => { setNameInput(group.name); setIsEditingName(true); }}
-            className="flex-1 text-left text-sm font-medium text-white hover:text-fuchsia-300 transition-colors truncate"
+            className="min-w-0 flex-1 text-left text-sm font-medium text-white hover:text-fuchsia-300 transition-colors truncate"
           >
             {group.name}
           </button>
@@ -93,21 +93,23 @@ export function GroupDropZone({ group, cycleId }: Props) {
       </div>
 
       {/* Participants */}
-      <div className="flex-1 px-2 py-2 space-y-1 min-h-[80px]">
-        <AnimatePresence mode="popLayout">
-          {group.participants.map((p) => (
-            <motion.div
-              key={p.id}
-              layout
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.8 }}
-              onDoubleClick={() => unassignParticipantFromGroup(p.id, group.id)}
-            >
-              <DraggableParticipantCard participant={p} compact />
-            </motion.div>
-          ))}
-        </AnimatePresence>
+      <div className="min-h-0 flex-1 overflow-y-auto px-2 py-2">
+        <div className="space-y-1">
+          <AnimatePresence mode="popLayout">
+            {group.participants.map((p) => (
+              <motion.div
+                key={p.id}
+                layout
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                onDoubleClick={() => unassignParticipantFromGroup(p.id, group.id)}
+              >
+                <DraggableParticipantCard participant={p} compact />
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
         {group.participants.length === 0 && (
           <div className="flex items-center justify-center h-16 text-slate-600 text-xs">
             Glissez des participants ici
@@ -116,14 +118,14 @@ export function GroupDropZone({ group, cycleId }: Props) {
       </div>
 
       {/* Quick add */}
-      <div className="px-2 pb-2 flex gap-1">
+      <div className="px-2 pb-2 flex gap-1 shrink-0">
         <input
           type="text"
           value={quickAdd}
           onChange={(e) => setQuickAdd(e.target.value)}
           onKeyDown={handleQuickAddKey}
           placeholder="Ajouter un prénom..."
-          className="flex-1 text-xs px-2 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white placeholder-slate-600 focus:outline-none focus:border-fuchsia-500/50"
+          className="min-w-0 flex-1 text-xs px-2 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white placeholder-slate-600 focus:outline-none focus:border-fuchsia-500/50"
         />
         <button
           onClick={handleQuickAdd}
@@ -135,13 +137,13 @@ export function GroupDropZone({ group, cycleId }: Props) {
       </div>
 
       {/* Footer */}
-      <div className="px-3 pb-2 flex items-center justify-between">
+      <div className="px-3 pb-2 flex items-center justify-between gap-2 shrink-0">
         <div className="flex items-center gap-1 text-xs text-slate-500">
           <Users size={12} />
           {group.participants.length} · {group.winnersCount} gagnant(s)
         </div>
-        {tooFew && <span className="text-xs text-red-400">Min. 2 participants</span>}
-        {!tooFew && tooManyWinners && <span className="text-xs text-red-400">Trop de gagnants</span>}
+        {tooFew && <span className="text-xs text-red-400 text-right">Min. 2 participants</span>}
+        {!tooFew && tooManyWinners && <span className="text-xs text-red-400 text-right">Trop de gagnants</span>}
       </div>
     </div>
   );

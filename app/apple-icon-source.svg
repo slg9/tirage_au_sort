@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="WheelDraw">
+  <rect width="512" height="512" rx="112" fill="#0a0a1a"/>
+  <circle cx="256" cy="286" r="184" fill="#fbbf24"/>
+  <circle cx="256" cy="286" r="162" fill="#0a0a1a"/>
+  <path d="M256 286 L256 124 A162 162 0 0 1 396.3 205 Z" fill="#d946ef"/>
+  <path d="M256 286 L396.3 205 A162 162 0 0 1 396.3 367 Z" fill="#7c3aed"/>
+  <path d="M256 286 L396.3 367 A162 162 0 0 1 256 448 Z" fill="#06b6d4"/>
+  <path d="M256 286 L256 448 A162 162 0 0 1 115.7 367 Z" fill="#fbbf24"/>
+  <path d="M256 286 L115.7 367 A162 162 0 0 1 115.7 205 Z" fill="#fb7185"/>
+  <path d="M256 286 L115.7 205 A162 162 0 0 1 256 124 Z" fill="#4f46e5"/>
+  <circle cx="256" cy="286" r="56" fill="#0a0a1a" stroke="#fbbf24" stroke-width="18"/>
+  <circle cx="256" cy="286" r="18" fill="#fbbf24"/>
+  <path d="M214 54 H298 L256 134 Z" fill="#fbbf24" stroke="#f59e0b" stroke-width="10" stroke-linejoin="round"/>
+</svg>
