@@ -8,6 +8,7 @@ export function SessionControls() {
   const setView = useStore((s) => s.setView);
   const setSetupStep = useStore((s) => s.setSetupStep);
   const prepareNextCycle = useStore((s) => s.prepareNextCycle);
+  const showCycleResults = useStore((s) => s.showCycleResults);
   const resetSession = useStore((s) => s.resetSession);
   const newSession = useStore((s) => s.newSession);
 
@@ -16,15 +17,10 @@ export function SessionControls() {
   const currentCycle = session.cycles[session.currentCycleIndex];
   const isLastCycle = session.currentCycleIndex === session.cycles.length - 1;
   const isSessionDone = session.cycles.every((c) => c.status === "done");
-  const prevCycleDone = session.currentCycleIndex === 0
-    ? false
-    : session.cycles[session.currentCycleIndex - 1]?.status === "done";
   const currentCycleDone = currentCycle?.status === "done";
-
-  const replayFullDraw = () => {
-    resetSession();
-    setView("drawing");
-  };
+  const previousCycle = session.currentCycleIndex > 0
+    ? session.cycles[session.currentCycleIndex - 1]
+    : null;
 
   const editGroupsBeforeRestart = () => {
     resetSession();
@@ -129,14 +125,14 @@ export function SessionControls() {
         className="flex flex-col items-center gap-3"
       >
         <div className="flex flex-col items-center gap-3">
-          {isLast && session.currentCycleIndex > 0 && (
+          {isLast && previousCycle && (
             <div className="flex flex-col gap-2 sm:flex-row">
               <button
-                onClick={replayFullDraw}
+                onClick={() => showCycleResults(previousCycle.id)}
                 className="flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-white/10"
               >
                 <RotateCcw size={16} />
-                Rejouer tout le tirage
+                Rejouer le tirage
               </button>
               <button
                 onClick={editGroupsBeforeRestart}

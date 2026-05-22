@@ -117,6 +117,7 @@ type Store = {
   startSession: () => void;
   setView: (view: AppView) => void;
   setSetupStep: (step: SetupStep) => void;
+  showCycleResults: (cycleId: string) => void;
   markGroupAsDrawn: (cycleId: string, groupId: string, winners: Participant[]) => void;
   completeCycle: (cycleId: string) => void;
   prepareNextCycle: () => void;
@@ -492,6 +493,18 @@ export const useStore = create<Store>()(
       setView: (view) => set({ view }),
 
       setSetupStep: (setupStep) => set({ setupStep }),
+
+      showCycleResults: (cycleId) =>
+        set((s) => {
+          if (!s.session) return {};
+          const cycleIndex = s.session.cycles.findIndex((cycle) => cycle.id === cycleId);
+          if (cycleIndex === -1) return {};
+          return persistSession(
+            s,
+            { ...s.session, currentCycleIndex: cycleIndex },
+            { view: "drawing" }
+          );
+        }),
 
       markGroupAsDrawn: (cycleId, groupId, winners) =>
         set((s) => {

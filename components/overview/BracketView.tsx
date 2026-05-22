@@ -74,6 +74,11 @@ export function BracketView() {
         </motion.div>
       )}
 
+      {/* Controls */}
+      <div className="mb-6 flex justify-center">
+        <SessionControls />
+      </div>
+
       {/* Bracket: cycles in horizontal flow */}
       <div className="overflow-x-auto pb-4">
         <div className="flex items-start gap-2 min-w-max">
@@ -96,10 +101,6 @@ export function BracketView() {
         </div>
       </div>
 
-      {/* Controls */}
-      <div className="mt-8 flex justify-center">
-        <SessionControls />
-      </div>
     </div>
   );
 }

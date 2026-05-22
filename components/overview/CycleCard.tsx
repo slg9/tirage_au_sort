@@ -1,6 +1,6 @@
 "use client";
 import { motion } from "framer-motion";
-import { CheckCircle, Clock, Play, RotateCcw, Zap } from "lucide-react";
+import { CheckCircle, Clock, Play, Zap } from "lucide-react";
 import { Cycle } from "@/lib/types";
 import { GroupCard } from "./GroupCard";
 import { useStore } from "@/lib/store";
@@ -11,21 +11,9 @@ type Props = {
 };
 
 export function CycleCard({ cycle, isCurrent }: Props) {
-  const resetGroupDraw = useStore((s) => s.resetGroupDraw);
-  const resetCycleDraw = useStore((s) => s.resetCycleDraw);
   const setView = useStore((s) => s.setView);
   const isDone = cycle.status === "done";
   const isRunning = cycle.status === "running";
-
-  const replayCycle = () => {
-    resetCycleDraw(cycle.id);
-    setView("drawing");
-  };
-
-  const replayGroup = (groupId: string) => {
-    resetGroupDraw(cycle.id, groupId);
-    setView("drawing");
-  };
 
   return (
     <div className={`rounded-2xl border p-4 min-w-[200px] transition-all duration-300
@@ -55,29 +43,6 @@ export function CycleCard({ cycle, isCurrent }: Props) {
           <GroupCard key={group.id} group={group} compact={cycle.groups.length > 4} />
         ))}
       </div>
-
-      {isDone && (
-        <div className="mt-3 border-t border-white/10 pt-3">
-          <button
-            onClick={replayCycle}
-            className="mb-2 flex w-full items-center justify-center gap-2 rounded-lg border border-amber-300/30 bg-amber-400/10 px-3 py-2 text-xs font-semibold text-amber-200 transition-colors hover:bg-amber-400/20"
-          >
-            <RotateCcw size={14} />
-            Rejouer tout le cycle
-          </button>
-          <div className="grid gap-1.5">
-            {cycle.groups.map((group) => (
-              <button
-                key={group.id}
-                onClick={() => replayGroup(group.id)}
-                className="truncate rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-left text-xs text-slate-200 transition-colors hover:bg-white/10"
-              >
-                Rejouer {group.name}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
 
       {isRunning && isCurrent && (
         <div className="mt-3 border-t border-white/10 pt-3">

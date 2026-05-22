@@ -71,7 +71,7 @@ function DrawingSession({ session }: { session: Session }) {
     cycle.groups.map(createGroupDrawState)
   );
   const [showFinalReveal, setShowFinalReveal] = useState(false);
-  const [allGroupsDone, setAllGroupsDone] = useState(false);
+  const [allGroupsDone, setAllGroupsDone] = useState(cycle.status === "done");
   const [singleWheelSize, setSingleWheelSize] = useState(410);
   const [replayGroupIndex, setReplayGroupIndex] = useState<number | null>(null);
 
@@ -172,10 +172,12 @@ function DrawingSession({ session }: { session: Session }) {
     } else {
       // All groups done
       completeCycle(cycle.id);
-      setAllGroupsDone(true);
       if (isLastCycle) {
+        setShowFinalReveal(true);
         playFanfare();
+        return;
       }
+      setAllGroupsDone(true);
     }
   }, [activeGroup, safeActiveGroupIndex, groupStates, replayGroupIndex, isReplayingFromOverview, cycle.id, markGroupAsDrawn, completeCycle, isLastCycle, playFanfare]);
 
@@ -217,11 +219,11 @@ function DrawingSession({ session }: { session: Session }) {
       return () => window.clearTimeout(timeout);
     }
 
-    if ((cycle.groups.length > 1 || replayGroupIndex !== null || isReplayingFromOverview) && activeState.phase === "revealing") {
+    if ((cycle.groups.length > 1 || replayGroupIndex !== null || isReplayingFromOverview || isLastCycle) && activeState.phase === "revealing") {
       const timeout = window.setTimeout(handleRevealDone, 700);
       return () => window.clearTimeout(timeout);
     }
-  }, [activeState, cycle.groups.length, handleRevealDone, handleStartGroup, isReplayingFromOverview, replayGroupIndex]);
+  }, [activeState, cycle.groups.length, handleRevealDone, handleStartGroup, isLastCycle, isReplayingFromOverview, replayGroupIndex]);
 
   useEffect(() => {
     const updateWheelSize = () => {
@@ -286,6 +288,33 @@ function DrawingSession({ session }: { session: Session }) {
           >
             <div className="text-4xl mb-3">🎉</div>
             <h3 className="text-2xl font-bold text-white mb-2">Cycle terminé !</h3>
+            <div className="mb-5 flex flex-col justify-center gap-3 sm:flex-row">
+              <button
+                onClick={handleReplayFullDraw}
+                className="flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-5 py-3 font-semibold text-white transition-colors hover:bg-white/10"
+              >
+                <RotateCcw size={18} />
+                Rejouer tout le tirage
+              </button>
+              <button
+                onClick={handleEditGroups}
+                className="flex items-center justify-center rounded-xl border border-white/15 bg-white/5 px-5 py-3 font-semibold text-slate-200 transition-colors hover:bg-white/10"
+              >
+                Modifier les groupes
+              </button>
+              {!isLastCycle && (
+                <button
+                  onClick={() => {
+                    prepareNextCycle();
+                    setView("overview");
+                  }}
+                  className="flex items-center justify-center gap-3 rounded-xl bg-gradient-to-r from-fuchsia-600 to-violet-600 px-6 py-3 font-bold text-white shadow-xl shadow-fuchsia-500/30 transition-all hover:from-fuchsia-500 hover:to-violet-500"
+                >
+                  <Play size={20} fill="currentColor" />
+                  Lancer le cycle suivant
+                </button>
+              )}
+            </div>
             <div className="grid gap-3 text-left sm:grid-cols-2">
               {cycle.groups.map((group, index) => (
                 <div key={group.id} className="rounded-xl border border-white/10 bg-white/5 p-3">
@@ -310,35 +339,6 @@ function DrawingSession({ session }: { session: Session }) {
               ))}
             </div>
           </motion.div>
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <button
-              onClick={handleReplayFullDraw}
-              className="flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-5 py-3 font-semibold text-white transition-colors hover:bg-white/10"
-            >
-              <RotateCcw size={18} />
-              Rejouer tout le tirage
-            </button>
-            <button
-              onClick={handleEditGroups}
-              className="flex items-center justify-center rounded-xl border border-white/15 bg-white/5 px-5 py-3 font-semibold text-slate-200 transition-colors hover:bg-white/10"
-            >
-              Modifier les groupes
-            </button>
-            <button
-              onClick={() => {
-                if (isLastCycle) {
-                  setShowFinalReveal(true);
-                  return;
-                }
-                prepareNextCycle();
-                setView("overview");
-              }}
-              className="flex items-center justify-center gap-3 rounded-xl bg-gradient-to-r from-fuchsia-600 to-violet-600 px-6 py-3 font-bold text-white shadow-xl shadow-fuchsia-500/30 transition-all hover:from-fuchsia-500 hover:to-violet-500"
-            >
-              <Play size={20} fill="currentColor" />
-              {isLastCycle ? "Voir le résultat final" : "Lancer le cycle suivant"}
-            </button>
-          </div>
         </div>
       ) : (
         /* Drawing grid */
